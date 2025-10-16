@@ -80,8 +80,6 @@ class Item(models.Model):
     def __str__(self):
         return self.title
 
-
-
 class Bid(models.Model):
     item = models.ForeignKey(Item, on_delete=models.CASCADE,related_name="bids")
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)

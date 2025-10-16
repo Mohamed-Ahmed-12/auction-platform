@@ -23,7 +23,7 @@ class AuctionSerializer(serializers.ModelSerializer):
     items = AuctionItemsSerializer(many=True , read_only = True)
     class Meta:
         model = Auction
-        fields = "__all__"
+        fields = ['title','slug','desc','entry_fee','start_date','end_date','status','items']
     def get_status(self,obj):
         now = timezone.now()
         if obj.end_date<now: return "ended"
