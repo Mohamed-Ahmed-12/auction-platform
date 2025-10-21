@@ -1,59 +1,130 @@
+from datetime import datetime
+from decimal import Decimal, InvalidOperation
 import json
-from asgiref.sync import sync_to_async
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
-
-from main.models import Item
+from main.models import Item, Bid , AuctionResult
+from main.serializers import BidSerializer
 
 class BidConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        # Get the unique ID from the URL path
         self.item_id = self.scope['url_route']['kwargs']['item_id']
-        item = await self.get_item(id=self.scope['url_route']['kwargs']['item_id'])
+        self.group_name = f'auction_item_{self.item_id}'
+        
+        item = await self.get_item(id=self.item_id)
+
+        # If item obj not found
         if item is None:
             await self.accept()
-            await self.close(code=4001,reason="Item not found")  # Custom close code for "item not found"
+            await self.close(code=4001, reason="Item not found")
             return
-        # Create a unique group name for this specific auction
-        self.group_name = 'auction_item_%s' % self.item_id
+        
+        # If item obj already ended not accept any connection
+        if item.end_at is not None:
+            await self.accept()
+            await self.close(code=4001, reason="Item was ended")
+            return
 
-        # Add this consumer to the Group
         await self.channel_layer.group_add(
             self.group_name,
-            self.channel_name # The unique identifier for this consumer connection
+            self.channel_name
         )
-        
+
         await self.accept()
-        # Now, the consumer is officially listening to 'auction_item_123'
 
     async def disconnect(self, close_code):
-        print(close_code)
-        # await self.channel_layer.group_discard(
-        #     self.group_name,
-        #     self.channel_name
-        # )
+        print(f"Disconnected with code: {close_code}")
+        if hasattr(self, 'group_name'):
+            await self.channel_layer.group_discard(
+                self.group_name,
+                self.channel_name
+            )
 
     async def receive(self, text_data):
-        data = json.loads(text_data)
-        print(data)
-        bid_amount = data['bid']
+        # load the bid amount
+        try:
+            data = json.loads(text_data)
+            bid_amount = Decimal(str(data.get('amount')))
+        except (json.JSONDecodeError, InvalidOperation, TypeError):
+            await self.send(text_data=json.dumps({
+                'error': 'Invalid bid format'
+            }))
+            return
 
-        # Broadcast bid to group
-        await self.channel_layer.group_send(
-            self.group_name,
-            {
-                'type': 'broadcast_bid', #This specifies which method on the consumers in the group should be called to handle this message.
-                'bid': bid_amount,
-            }
-        )
-        
+        item = await self.get_item(id=self.item_id)
+        if item is None:
+            await self.send(text_data=json.dumps({
+                'error': 'Item not found'
+            }))
+            return
+
+        if not item.is_active:
+            await self.send(text_data=json.dumps({
+                'error': 'Item is inactive'
+            }))
+            return
+
+        min_inc = item.min_increment
+        last_bid = await self.last_bid(itemId=self.item_id)
+        current_price = last_bid.amount if last_bid else item.start_price
+        min_acceptable_bid = current_price + min_inc
+
+        print(f"Minimum acceptable bid: {min_acceptable_bid}")
+
+        if bid_amount < min_acceptable_bid:
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    'type': 'broadcast_bid',
+                    'error': True,
+                    'message': json.dumps({
+                        'error': f'Bid must be at least {min_acceptable_bid:.2f}'
+                    })
+                }
+            )
+            return
+
+        try:
+
+            bid_obj = await database_sync_to_async(Bid.objects.create)(
+                item=item,
+                amount=bid_amount,
+                created_by=self.scope['user']
+            )
+
+            serialized_bid = await database_sync_to_async(lambda: BidSerializer(bid_obj).data)()
+            
+            # Close auction if reserve price is met
+            await self.close_auction(item, self.scope['user'], bid_amount)
+
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    'type': 'broadcast_bid',
+                    'bid': serialized_bid
+                }
+            )
+
+        except Exception as e:
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    'type': 'broadcast_bid',
+                    'error': True,
+                    'message': json.dumps({
+                        'error': 'Failed to place bid',
+                        'details': str(e)
+                    })
+                }
+            )
+
     async def broadcast_bid(self, event):
-        """
-        The method receives a dictionary named event (which is the message payload sent by group_send).
-        """
-        await self.send(text_data=json.dumps({
-            'bid': event['bid'],
-        }))
+        if event.get('error'):
+            await self.send(text_data=event['message'])
+        else:
+            await self.send(text_data=json.dumps({
+                'bid': event['bid']
+            }))
 
     async def get_item(self, id):
         try:
@@ -61,3 +132,17 @@ class BidConsumer(AsyncWebsocketConsumer):
         except Item.DoesNotExist:
             return None
 
+    async def last_bid(self, itemId):
+        return await database_sync_to_async(
+            lambda: Bid.objects.filter(item_id=itemId).order_by('-created_at').first()
+        )()
+        
+    async def close_auction(self, item, winner, winning_bid):
+        item.is_active = False
+        item.end_at = datetime.now()
+        await database_sync_to_async(item.save)()
+        await database_sync_to_async(AuctionResult.objects.create)(
+            item=item,
+            winner=winner,
+            winning_bid=winning_bid
+        )
