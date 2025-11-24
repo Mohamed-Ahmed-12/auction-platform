@@ -26,5 +26,8 @@ venv.bak/
 include/
 Lib/
 Scripts/
+pyvenv.cfg
 
+media/
+static/
 

@@ -10,7 +10,7 @@ class CategoryAdmin(admin.ModelAdmin):
 @admin.register(Auction)
 class AuctionAdmin(admin.ModelAdmin):
     fieldsets = (
-        (("Basic info"), {"fields": ("title", "slug","desc")}),
+        (("Basic info"), {"fields": ("title", "slug","desc","category")}),
         (("Pricing"), {"fields": ("entry_fee",)}),
         (("Dating"), {"fields": ("start_date","end_date")}),
         ((None),{"fields":("created_by",)})

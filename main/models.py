@@ -35,17 +35,14 @@ class Auction(models.Model):
         validators=[MinValueValidator(0.00, message="Entry fee cannot be negative.")],
     )
     start_date = models.DateTimeField()
-    end_date = models.DateTimeField(
-        validators=[
-            MinValueValidator(timezone.now, message="End date must be in the future.")
-        ]
-    )
+    end_date = models.DateTimeField()
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     slug = models.SlugField(max_length=255, null=True, blank=True)
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
 
     def __str__(self):
         return self.title
@@ -64,7 +61,15 @@ class Auction(models.Model):
         self.full_clean()  # Calls clean_fields(), clean(), and validate_unique()
         super().save(*args, **kwargs)
 
-
+    @property
+    def status(self):
+        now = timezone.now()
+        if self.end_date < now:
+            return "ended"
+        elif self.start_date > now:
+            return "upcoming"
+        return "live"
+    
 class Item(models.Model):
     auction = models.ForeignKey(Auction, on_delete=models.CASCADE, related_name="items")
     title = models.CharField(max_length=255)
@@ -92,6 +97,8 @@ class Item(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=False)
     end_at = models.DateTimeField(auto_now_add=False , blank=True , null=True)
+    slug = models.SlugField(max_length=255, null=True, blank=True)
+    
 
     class Meta:
         db_table_comment = "Auction Items"
@@ -100,15 +107,16 @@ class Item(models.Model):
         return self.title
 
     def clean(self):
-
-        # 1. Check if the auction is still active
         if self.reserve_price is not None and self.start_price > self.reserve_price:
             raise ValidationError("The start price must be less than reserve price.")
         super().clean()
-
+    
     # To ensure validation runs before every save, you must call clean()
     # and handle the ValidationError before calling save().
     def save(self, *args, **kwargs):
+        if not self.slug:
+            # Generate slug from the title
+            self.slug = slugify(self.title)
         self.full_clean()  # Calls clean_fields(), clean(), and validate_unique()
         super().save(*args, **kwargs)
 
