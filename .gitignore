@@ -1,0 +1,33 @@
+# Python
+*.py[cod]
+__pycache__/
+*.so
+
+# Django
+*.log
+*.pot
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+db.sqlite3
+venv/
+ENV/
+env/
+venv.bak/
+.local
+.DS_Store
+
+
+# Environments
+.env
+*.env
+
+include/
+Lib/
+Scripts/
+pyvenv.cfg
+
+media/
+static/
+staticfiles/
