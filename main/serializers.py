@@ -24,6 +24,7 @@ class AuctionSerializer(serializers.ModelSerializer):
     """
     AuctionSerializer with full details.
     """
+<<<<<<< HEAD
     status = serializers.SerializerMethodField()
     items = ItemsSerializer(many=True , read_only = True)
     class Meta:
@@ -35,12 +36,36 @@ class AuctionSerializer(serializers.ModelSerializer):
         if obj.end_date<now: return "ended"
         elif obj.start_date>now: return "upcoming"
         return "live"
+=======
+    status = serializers.ReadOnlyField()
+    items = ItemsSerializer(many=True , read_only = True)
+    class Meta:
+        model = Auction
+        fields = ['id','title','slug','desc','entry_fee','start_date','end_date','status','items',]
+        
+>>>>>>> d41bd5c2f71c127f5bc5d5e18d3eed1ed818de8e
 
 class AuctionBasicDetailsSerializer(AuctionSerializer):
     """
     A lightweight version of AuctionSerializer without nested items.
     """
+<<<<<<< HEAD
     class Meta(AuctionSerializer.Meta):
         fields = ['id','title','slug','desc','entry_fee','start_date','end_date','status',]
 
  
+=======
+    category = CategorySerializer(read_only=True)
+    items = None  # disable inherited items
+    item_count = serializers.SerializerMethodField()
+
+    class Meta(AuctionSerializer.Meta):
+        fields = [
+            'id', 'title', 'slug', 'desc', 
+            'entry_fee', 'start_date', 'end_date', 
+            'status', 'item_count','category'
+        ]
+
+    def get_item_count(self, obj):
+        return obj.items.count()
+>>>>>>> d41bd5c2f71c127f5bc5d5e18d3eed1ed818de8e
