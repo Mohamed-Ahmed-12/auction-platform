@@ -21,8 +21,4 @@ class AuctionView(viewsets.ModelViewSet):
 
 class AuctionItemsView(viewsets.ModelViewSet):
     queryset = Item.objects.filter(is_active=True)
-<<<<<<< HEAD
     serializer_class = ItemsSerializer
-=======
-    serializer_class = ItemsSerializer
->>>>>>> d41bd5c2f71c127f5bc5d5e18d3eed1ed818de8e

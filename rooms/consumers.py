@@ -145,8 +145,4 @@ class BidConsumer(AsyncWebsocketConsumer):
             item=item,
             winner=winner,
             winning_bid=winning_bid
-<<<<<<< HEAD
         )
-=======
-        )
->>>>>>> d41bd5c2f71c127f5bc5d5e18d3eed1ed818de8e

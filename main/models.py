@@ -11,10 +11,6 @@ from .custom_fields import LocationField
 
 User = get_user_model()
 
-<<<<<<< HEAD
-=======
-
->>>>>>> d41bd5c2f71c127f5bc5d5e18d3eed1ed818de8e
 class Category(models.Model):
     name = models.CharField(max_length=255, unique=True)
     icon = models.FileField(upload_to="category", blank=True, null=True)
@@ -38,25 +34,14 @@ class Auction(models.Model):
         validators=[MinValueValidator(0.00, message="Entry fee cannot be negative.")],
     )
     start_date = models.DateTimeField()
-<<<<<<< HEAD
-    end_date = models.DateTimeField(
-        validators=[
-            MinValueValidator(timezone.now, message="End date must be in the future.")
-        ]
-    )
-=======
     end_date = models.DateTimeField()
->>>>>>> d41bd5c2f71c127f5bc5d5e18d3eed1ed818de8e
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     slug = models.SlugField(max_length=255, null=True, blank=True)
-<<<<<<< HEAD
-=======
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
->>>>>>> d41bd5c2f71c127f5bc5d5e18d3eed1ed818de8e
 
     def __str__(self):
         return self.title
@@ -75,9 +60,6 @@ class Auction(models.Model):
         self.full_clean()  # Calls clean_fields(), clean(), and validate_unique()
         super().save(*args, **kwargs)
 
-<<<<<<< HEAD
-
-=======
     @property
     def status(self):
         now = timezone.now()
@@ -87,7 +69,6 @@ class Auction(models.Model):
             return "upcoming"
         return "live"
     
->>>>>>> d41bd5c2f71c127f5bc5d5e18d3eed1ed818de8e
 class Item(models.Model):
     auction = models.ForeignKey(Auction, on_delete=models.CASCADE, related_name="items")
     title = models.CharField(max_length=255)
@@ -115,11 +96,8 @@ class Item(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=False)
     end_at = models.DateTimeField(auto_now_add=False , blank=True , null=True)
-<<<<<<< HEAD
-=======
     slug = models.SlugField(max_length=255, null=True, blank=True)
     
->>>>>>> d41bd5c2f71c127f5bc5d5e18d3eed1ed818de8e
 
     class Meta:
         db_table_comment = "Auction Items"
@@ -128,17 +106,6 @@ class Item(models.Model):
         return self.title
 
     def clean(self):
-<<<<<<< HEAD
-
-        # 1. Check if the auction is still active
-        if self.reserve_price is not None and self.start_price > self.reserve_price:
-            raise ValidationError("The start price must be less than reserve price.")
-        super().clean()
-
-    # To ensure validation runs before every save, you must call clean()
-    # and handle the ValidationError before calling save().
-    def save(self, *args, **kwargs):
-=======
         if self.reserve_price is not None and self.start_price > self.reserve_price:
             raise ValidationError("The start price must be less than reserve price.")
         super().clean()
@@ -149,7 +116,6 @@ class Item(models.Model):
         if not self.slug:
             # Generate slug from the title
             self.slug = slugify(self.title)
->>>>>>> d41bd5c2f71c127f5bc5d5e18d3eed1ed818de8e
         self.full_clean()  # Calls clean_fields(), clean(), and validate_unique()
         super().save(*args, **kwargs)
 
