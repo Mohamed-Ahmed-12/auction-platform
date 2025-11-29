@@ -22,3 +22,5 @@ class AuctionView(viewsets.ModelViewSet):
 class AuctionItemsView(viewsets.ModelViewSet):
     queryset = Item.objects.filter(is_active=True)
     serializer_class = ItemsSerializer
+    lookup_field = "slug"
+
