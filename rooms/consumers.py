@@ -4,12 +4,18 @@ import json
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 from main.models import Item, Bid , AuctionResult
-from main.serializers import BidSerializer
+from main.serializers import BidSerializer,BidBasicSerializer
 
 class BidConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.item_id = self.scope['url_route']['kwargs']['item_id']
         self.group_name = f'auction_item_{self.item_id}'
+        user = self.scope['user']
+        if user.is_anonymous:
+            await self.accept()
+            await self.close(code=4001, reason="Anonymous user not allowed")
+            print("Anonymous user not allowed")
+            return
         
         item = await self.get_item(id=self.item_id)
 
@@ -17,12 +23,14 @@ class BidConsumer(AsyncWebsocketConsumer):
         if item is None:
             await self.accept()
             await self.close(code=4001, reason="Item not found")
+            print("Item not found")
             return
         
         # If item obj already ended not accept any connection
         if item.end_at is not None:
             await self.accept()
             await self.close(code=4001, reason="Item was ended")
+            print("Item was ended")
             return
 
         await self.channel_layer.group_add(
@@ -31,6 +39,17 @@ class BidConsumer(AsyncWebsocketConsumer):
         )
 
         await self.accept()
+        
+        # Send a notification to all existing users in the room
+        await self.channel_layer.group_send(
+            self.group_name,
+            {
+                'type': 'broadcast_room_notification',
+                'message': f'{user.username} has joined the bidding!',
+                'notification_type': 'user_joined',
+                'sender_channel': self.channel_name # Don't notify self
+            }
+        )
 
     async def disconnect(self, close_code):
         print(f"Disconnected with code: {close_code}")
@@ -38,6 +57,17 @@ class BidConsumer(AsyncWebsocketConsumer):
             await self.channel_layer.group_discard(
                 self.group_name,
                 self.channel_name
+            )
+        user = self.scope['user']
+        if close_code == 1000:
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    'type': 'broadcast_room_notification',
+                    'message': f'{user.username} has leave the bidding!',
+                    'notification_type': 'user_leave',
+                    'sender_channel': self.channel_name # Don't notify self
+                }
             )
 
     async def receive(self, text_data):
@@ -92,7 +122,7 @@ class BidConsumer(AsyncWebsocketConsumer):
                 created_by=self.scope['user']
             )
 
-            serialized_bid = await database_sync_to_async(lambda: BidSerializer(bid_obj).data)()
+            serialized_bid = await database_sync_to_async(lambda: BidBasicSerializer(bid_obj).data)()
             
             # Close auction if reserve price is met
             await self.close_auction(item, self.scope['user'], bid_amount)
@@ -146,3 +176,14 @@ class BidConsumer(AsyncWebsocketConsumer):
             winner=winner,
             winning_bid=winning_bid
         )
+
+    # Handler for room notifications sent by other consumers
+    async def broadcast_room_notification(self, event):
+        # Prevent the user who just joined from getting their own 'joined' notification
+        if event.get('sender_channel') == self.channel_name:
+            return
+            
+        await self.send(text_data=json.dumps({
+            'type': event.get('notification_type', 'info'),
+            'message': event['message']
+        }))

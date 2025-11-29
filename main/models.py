@@ -59,13 +59,14 @@ class Auction(models.Model):
             self.slug = slugify(self.title)
         self.full_clean()  # Calls clean_fields(), clean(), and validate_unique()
         super().save(*args, **kwargs)
+    
 
     @property
     def status(self):
         now = timezone.now()
-        if self.end_date < now:
+        if self.end_date <= now:
             return "ended"
-        elif self.start_date > now:
+        if self.start_date > now:
             return "upcoming"
         return "live"
     

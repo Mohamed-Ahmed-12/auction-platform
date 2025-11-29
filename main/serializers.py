@@ -11,24 +11,31 @@ class BidSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bid
         fields = "__all__"
+
+class BidBasicSerializer(serializers.ModelSerializer):
+    created_by = serializers.CharField(source='created_by.username')
+    class Meta:
+        model = Bid
+        fields = ['id','amount','created_at','created_by',]
         
 class ItemsSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
-    bids = BidSerializer(many=True , read_only = True)
+    bids = BidBasicSerializer(many=True , read_only = True)
     class Meta:
         model = Item
-        fields = ["id", "title","desc","start_price","min_increment","auction","category" , "bids" , "end_at" , "is_active"]
+        fields = ["id", "title","desc","start_price","min_increment","auction","category" , "bids" , "end_at" , "is_active","slug"]
 
 
 class AuctionSerializer(serializers.ModelSerializer):
     """
     AuctionSerializer with full details.
     """
+    category = CategorySerializer(read_only=True)
     status = serializers.ReadOnlyField()
     items = ItemsSerializer(many=True , read_only = True)
     class Meta:
         model = Auction
-        fields = ['id','title','slug','desc','entry_fee','start_date','end_date','status','items',]
+        fields = ['id','title','slug','desc','entry_fee','start_date','end_date','status','items','category']
         
 
 class AuctionBasicDetailsSerializer(AuctionSerializer):
