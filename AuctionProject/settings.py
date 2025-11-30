@@ -84,6 +84,8 @@ TEMPLATES = [
 WSGI_APPLICATION = 'AuctionProject.wsgi.application'
 ASGI_APPLICATION = "AuctionProject.asgi.application" #setting to point Daphne at the root routing configuration
 
+AUTH_USER_MODEL = 'authen.CustomUser'
+
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
