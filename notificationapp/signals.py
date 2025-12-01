@@ -5,7 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
-from main.models import Auction
+from main.models import Auction, AuctionResult, Bid 
 from notificationapp.models import Notification, NotificationCategories
 
 User = get_user_model()
@@ -51,8 +51,6 @@ def notify_all_users_on_auction_create(sender, instance, created, **kwargs):
             }
         )
 
-from main.models import AuctionResult, Bid 
-from notificationapp.models import Notification, NotificationCategories
 
 @receiver(post_save, sender=AuctionResult)
 def handle_auction_result(sender, instance, created, **kwargs):

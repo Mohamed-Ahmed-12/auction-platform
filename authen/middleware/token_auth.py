@@ -44,7 +44,7 @@ def get_user_from_token(token_key):
         return AnonymousUser()
 
 
-class TokenAuthMiddleware:
+class WebSocketTokenAuthMiddleware:
     """
     Custom middleware that authenticates the user based on a JWT token 
     passed in the WebSocket connection's query string: ?token=<JWT_TOKEN>
@@ -77,4 +77,40 @@ class TokenAuthMiddleware:
 
 # Helper function for simpler use in asgi.py
 def TokenAuthMiddlewareStack(inner):
-    return TokenAuthMiddleware(inner)
+    return WebSocketTokenAuthMiddleware(inner)
+
+
+
+from django.utils.deprecation import MiddlewareMixin
+
+class TokenAuthenticationMiddleware(MiddlewareMixin):
+
+    def process_request(self, request):
+        close_old_connections()
+
+        # If user is already authenticated (session), do nothing
+        if hasattr(request, "user") and request.user.is_authenticated:
+            return
+
+        auth_header = request.headers.get("Authorization")
+        if not auth_header:
+            request.user = AnonymousUser()
+            return
+
+        try:
+            prefix, token = auth_header.split()
+        except ValueError:
+            request.user = AnonymousUser()
+            return
+
+        if prefix.lower() != "bearer":
+            request.user = AnonymousUser()
+            return
+
+        try:
+            access_token = AccessToken(token)
+            user_id = access_token["user_id"]
+            user = User.objects.get(id=user_id)
+            request.user = user
+        except Exception:
+            request.user = AnonymousUser()

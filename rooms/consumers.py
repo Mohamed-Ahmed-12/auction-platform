@@ -125,7 +125,7 @@ class BidConsumer(AsyncWebsocketConsumer):
             serialized_bid = await database_sync_to_async(lambda: BidBasicSerializer(bid_obj).data)()
             
             # Close auction if reserve price is met
-            await self.close_auction(item, self.scope['user'], bid_amount)
+            # await self.close_auction(item, self.scope['user'], bid_amount)
 
             await self.channel_layer.group_send(
                 self.group_name,

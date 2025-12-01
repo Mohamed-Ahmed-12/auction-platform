@@ -22,7 +22,11 @@ class AuctionAdmin(admin.ModelAdmin):
         if not change:
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
-    
+        
+@admin.register(Item)
+class ItemAdmin(admin.ModelAdmin):
+    prepopulated_fields = {"slug": ["title"]}
+        
+
 admin.site.register(AuctionResult)
-admin.site.register(Item)
 admin.site.register(Bid)
